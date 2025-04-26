@@ -31,6 +31,9 @@ spring:
               maxBackoff: 500ms
               factor: 2
               basedOnPreviousValue: false
+        - name: CircuitBreaker
+          args:
+            fallbackUri: forward:/kertaskerja-fallback
       routes:
         - id: opd-route
           uri: ${OPD_SERVICE_URL:http://localhost:9001}/opd
@@ -44,3 +47,20 @@ spring:
           uri: ${BIDANG_URUSAN_SERVICE_URL:http://localhost:9003}/bidang_urusan
           predicates:
             - Path=/bidang_urusan/**
+
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        slidingWindowSize: 20
+        permittedNumberOfCallsInHalfOpenState: 5
+        failureRateThreshold: 50
+        waitDurationInOpenState: 15000
+  timelimiter:
+    configs:
+      default:
+        timeoutDuration: 5s
+
+logging:
+  level:
+    io.github.resilience4j: DEBUG
