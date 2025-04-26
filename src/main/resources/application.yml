@@ -10,3 +10,37 @@ spring:
     name: edge-service
   lifecycle:
     timeout-per-shutdown-phase: 15s
+  cloud:
+    gateway:
+      httpClient:
+        connect-timeout: 2000
+        response-timeout: 5s
+        pool:
+          type: elastic
+          max-idle-time: 15s
+          max-life-time: 60s
+      default-filters:
+        - name: Retry
+          args:
+            retries: 3
+            methods: GET
+            series: SERVER_ERROR
+            exception: java.io.IOException, java.util.concurrent.TimeoutException
+            backoff:
+              firstBackoff: 50ms
+              maxBackoff: 500ms
+              factor: 2
+              basedOnPreviousValue: false
+      routes:
+        - id: opd-route
+          uri: ${OPD_SERVICE_URL:http://localhost:9001}/opd
+          predicates:
+            - Path=/opd/**
+        - id: urusan-route
+          uri: ${URUSAN_SERVICE_URL:http://localhost:9002}/urusan
+          predicates:
+            - Path=/urusan/**
+        - id: bidang-urusan-route
+          uri: ${BIDANG_URUSAN_SERVICE_URL:http://localhost:9003}/bidang_urusan
+          predicates:
+            - Path=/bidang_urusan/**
