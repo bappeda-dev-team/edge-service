@@ -19,24 +19,53 @@ repositories {
 
 ext {
 	set('springCloudVersion', "2024.0.1")
+	set('testcontainersVersion', "1.19.8")
 }
 
 dependencies {
+	implementation 'org.springframework.cloud:spring-cloud-starter-config'
 	implementation 'org.springframework.cloud:spring-cloud-starter-gateway'
 	implementation 'org.springframework.cloud:spring-cloud-starter-circuitbreaker-reactor-resilience4j'
 	implementation 'org.springframework.boot:spring-boot-starter-data-redis-reactive'
+	implementation 'org.springframework.session:spring-session-data-redis'
 
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testImplementation 'io.projectreactor:reactor-test'
+	testImplementation 'org.testcontainers:junit-jupiter'
+
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+	runtimeOnly 'io.netty:netty-resolver-dns-native-macos:4.1.101.Final:osx-aarch_64'
 }
 
 dependencyManagement {
 	imports {
 		mavenBom "org.springframework.cloud:spring-cloud-dependencies:${springCloudVersion}"
+		mavenBom "org.testcontainers:testcontainers-bom:${testcontainersVersion}"
 	}
 }
 
 tasks.named('test') {
 	useJUnitPlatform()
+}
+
+bootBuildImage {
+	imageName = "${project.name}"
+	environment = ["BP_JVM_VERSION" : "17.*"]
+
+	if (System.getProperty( "os.arch" ).toLowerCase().startsWith('aarch')) {
+		builder = "paketobuildpacks/builder-jammy-buildpackless-tiny"
+		buildpacks = [ "gcr.io/paketo-buildpacks/java" ]
+	} else {
+		builder = "docker.io/paketobuildpacks/builder-jammy-tiny"
+	}
+
+
+	docker {
+		publishRegistry {
+			username = project.findProperty("registryUsername")
+			password = project.findProperty("registryToken")
+			url = project.findProperty("registryUrl")
+		}
+	}
 }

@@ -15,6 +15,11 @@ spring:
     host: localhost
     port: 6379
     timeout: 1s
+  session:
+    store-type: redis
+    timeout: 10m
+    redis:
+      namespace: kertaskerja:edge
   cloud:
     gateway:
       httpClient:
@@ -24,7 +29,10 @@ spring:
           type: elastic
           max-idle-time: 15s
           max-life-time: 60s
+      redis-rate-limiter:
+        include-headers: false
       default-filters:
+        - SaveSession
         - name: RequestRateLimiter
           args:
             redis-rate-limiter:
