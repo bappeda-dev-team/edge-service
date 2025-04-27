@@ -10,11 +10,12 @@ spring:
     name: edge-service
   lifecycle:
     timeout-per-shutdown-phase: 15s
-  redis:
-    connect-timeout: 2s
-    host: localhost
-    port: 6379
-    timeout: 1s
+  data:
+    redis:
+      connect-timeout: 2s
+      host: localhost
+      port: 6379
+      timeout: 1s
   session:
     store-type: redis
     timeout: 10m
@@ -27,7 +28,7 @@ spring:
       uri: http://localhost:8888
       request-connect-timeout: 5000
       request-read-timeout: 5000
-      fail-fast: true
+      fail-fast: false
       retry:
         max-attempt: 6
         initial-interval: 1000
