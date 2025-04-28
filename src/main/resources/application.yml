@@ -67,6 +67,10 @@ spring:
           args:
             fallbackUri: forward:/kertaskerja-fallback
       routes:
+        - id: spa-route
+          uri: ${SPA_URL:http://localhost:3000}
+          predicates:
+            - Path=/,/*.css,/*.js,/favicon.ico
         - id: opd-route
           uri: ${OPD_SERVICE_URL:http://localhost:9001}/opd
           predicates:
