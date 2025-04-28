@@ -79,6 +79,18 @@ spring:
           uri: ${BIDANG_URUSAN_SERVICE_URL:http://localhost:9003}/bidang_urusan
           predicates:
             - Path=/bidang_urusan/**
+  security:
+    oauth2:
+      client:
+        registration:
+          keycloak:
+            client-id: edge-service
+            client-secret: kertaskerja-keycloak-secret
+            scope: openid
+        provider:
+          keycloak:
+            issuer-uri: http://localhost:8080/realms/Kertaskerja
+
 
 resilience4j:
   circuitbreaker:
