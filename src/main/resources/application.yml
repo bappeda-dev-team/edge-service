@@ -17,7 +17,6 @@ spring:
       port: 6379
       timeout: 1s
   session:
-    store-type: redis
     timeout: 10m
     redis:
       namespace: kertaskerja:edge
@@ -30,10 +29,10 @@ spring:
       request-read-timeout: 5000
       fail-fast: false
       retry:
-        max-attempt: 6
         initial-interval: 1000
         max-interval: 2000
         multiplier: 1.1
+        max-attempts: 6
     gateway:
       httpClient:
         connect-timeout: 2000
