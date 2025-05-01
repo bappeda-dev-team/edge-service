@@ -73,9 +73,9 @@ spring:
           predicates:
             - Path=/,/*.css,/*.js,/favicon.ico
         - id: opd-route
-          uri: ${OPD_SERVICE_URL:http://localhost:9001}/opd
+          uri: ${OPD_SERVICE_URL:http://localhost:9001}/opds
           predicates:
-            - Path=/opd/**
+            - Path=/opds/**
         - id: urusan-route
           uri: ${URUSAN_SERVICE_URL:http://localhost:9002}/urusan
           predicates:
