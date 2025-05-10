@@ -35,3 +35,5 @@ spec:
               value: http://config-service
             - name: SPRING_DATA_REDIS_HOST
               value: kertaskerja-redis
+            - name: SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_ISSUER_URI
+              value: http://kertaskerja-keycloak/realms/Kertaskerja
