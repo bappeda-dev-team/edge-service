@@ -58,7 +58,7 @@ bootBuildImage {
 
 	if (System.getProperty( "os.arch" ).toLowerCase().startsWith('aarch')) {
 		builder = "paketobuildpacks/builder-jammy-buildpackless-tiny"
-		buildpacks = [ "gcr.io/paketo-buildpacks/java" ]
+		buildpacks = [ "docker.io/paketobuildpacks/java" ]
 	} else {
 		builder = "docker.io/paketobuildpacks/builder-jammy-tiny"
 	}
