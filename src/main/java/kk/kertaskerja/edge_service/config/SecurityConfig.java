@@ -25,8 +25,16 @@ public class SecurityConfig {
     SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http, ReactiveClientRegistrationRepository clientRegistrationRepository) {
         return http
                 .authorizeExchange(exchanges ->
-                        exchanges.pathMatchers("/", "/*.css", "/*.js", "/favicon.ico").permitAll()
-                                 .pathMatchers(HttpMethod.GET, "/opds/**").permitAll()
+                                exchanges.pathMatchers(
+                                        "/",
+                                        "/*.css",
+                                        "/*.js",
+                                        "/favicon.ico",
+                                        "/_next/**",
+                                        "/assets/**",
+                                        "/images/**",
+                                        "/fonts/**"
+                                ).permitAll() // Allow public access to these paths
                                  .anyExchange().authenticated()
                 )
                 .exceptionHandling(exceptionHandling ->
