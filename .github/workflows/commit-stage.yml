@@ -4,7 +4,8 @@ on: push
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: bappeda-dev-team/edge-service
-  VERSION: latest
+  VERSION: ${{ github.sha }}
+
 
 jobs:
   build:
