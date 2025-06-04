@@ -68,33 +68,25 @@ spring:
           args:
             fallbackUri: forward:/kertaskerja-fallback
       routes:
-        - id: spa-route
-          uri: ${SPA_URL:http://localhost:3000}
+        - id: manrisk-route
+          uri: http://127.0.0.1:49490
           predicates:
-            - Path=/,/*.css,/*.js,/favicon.ico
-        - id: opd-route
-          uri: ${OPD_SERVICE_URL:http://localhost:9001}/opds
-          predicates:
-            - Path=/opds/**
-        - id: urusan-route
-          uri: ${URUSAN_SERVICE_URL:http://localhost:9002}/urusan
-          predicates:
-            - Path=/urusan/**
-        - id: bidang-urusan-route
-          uri: ${BIDANG_URUSAN_SERVICE_URL:http://localhost:9003}/bidang_urusan
-          predicates:
-            - Path=/bidang_urusan/**
+            - Path=/api/manrisk/**
+
   security:
     oauth2:
       client:
         registration:
           keycloak:
             client-id: edge-service
-            client-secret: kertaskerja-keycloak-secret
+            client-secret: GBferDkkn2imzmlvDVcnKynymUtiI2Fu
             scope: openid,roles
         provider:
           keycloak:
-            issuer-uri: http://localhost:8080/realms/Kertaskerja
+            issuer-uri: http://keycloak.kertaskerja.local/realms/KabMadiun
+      resourceserver:
+        jwt:
+          issuer-uri: http://keycloak.kertaskerja.local/realms/KabMadiun
 
 
 resilience4j:
@@ -110,6 +102,35 @@ resilience4j:
       default:
         timeoutDuration: 5s
 
-#logging:
-#  level:
-#    io.github.resilience4j: DEBUG
+logging:
+  level:
+    org.springframework.web.reactive.function.client.ExchangeFunctions: DEBUG
+    org.springframework.web.server.adapter.HttpWebHandlerAdapter: DEBUG
+    reactor.netty.http.server: DEBUG
+    org.springframework.security.web.server: DEBUG
+    io.github.resilience4j: DEBUG
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: configprops, env, gateway, health, heapdump, info, loggers, mappings, prometheus
+  endpoint:
+    health:
+      show-details: always
+      show-components: always
+      probes:
+        enabled: true
+      group:
+        readiness:
+          include: readinessState,redis
+  info:
+    env:
+      enabled: true
+    java:
+      enabled: true
+    os:
+      enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}

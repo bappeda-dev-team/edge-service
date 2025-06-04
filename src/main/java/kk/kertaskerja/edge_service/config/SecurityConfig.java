@@ -31,7 +31,9 @@ public class SecurityConfig {
     SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http, ReactiveClientRegistrationRepository clientRegistrationRepository) {
         return http
                 .authorizeExchange(exchanges ->
-                                exchanges.pathMatchers(
+                        exchanges
+                                .pathMatchers("/actuator/**").permitAll()
+                                .pathMatchers(
                                         "/",
                                         "/*.css",
                                         "/*.js",
@@ -39,9 +41,8 @@ public class SecurityConfig {
                                         "/_next/**",
                                         "/assets/**",
                                         "/images/**",
-                                        "/fonts/**"
-                                ).permitAll() // Allow public access to these paths
-                                 .anyExchange().authenticated()
+                                        "/fonts/**").permitAll() // Allow public access to these paths
+                                .anyExchange().authenticated()
                 )
                 .exceptionHandling(exceptionHandling ->
                         exceptionHandling.authenticationEntryPoint(
@@ -49,10 +50,11 @@ public class SecurityConfig {
                         )
                 )
                 .oauth2Login(Customizer.withDefaults())
+                .oauth2ResourceServer((oauth2) -> oauth2.jwt(Customizer.withDefaults()))
                 .logout(logout -> logout.logoutSuccessHandler(oidcLogoutSuccessHandler(clientRegistrationRepository)))
                 .csrf(csrf -> csrf
-                                .csrfTokenRepository(CookieServerCsrfTokenRepository.withHttpOnlyFalse())
-                                .csrfTokenRequestHandler(new ServerCsrfTokenRequestAttributeHandler())
+                        .csrfTokenRepository(CookieServerCsrfTokenRepository.withHttpOnlyFalse())
+                        .csrfTokenRequestHandler(new ServerCsrfTokenRequestAttributeHandler())
                 )
                 .build();
     }
