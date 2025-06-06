@@ -33,6 +33,7 @@ public class SecurityConfig {
                 .authorizeExchange(exchanges ->
                         exchanges
                                 .pathMatchers("/actuator/**").permitAll()
+                                .pathMatchers("/login**").permitAll()
                                 .pathMatchers(
                                         "/",
                                         "/*.css",
