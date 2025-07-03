@@ -87,7 +87,7 @@ public class SecurityConfig {
     CorsWebFilter corsWebFilter(CorsProperties corsProperties) {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowCredentials(true);
-        config.setAllowedOriginPatterns(corsProperties.getAllowedOrigins());
+        config.setAllowedOrigins(corsProperties.getAllowedOrigins());
         config.setAllowedHeaders(corsProperties.getAllowedHeaders());
         config.setAllowedMethods(corsProperties.getAllowedMethods());
 
