@@ -23,8 +23,6 @@ import org.springframework.web.cors.reactive.CorsWebFilter;
 import org.springframework.web.server.WebFilter;
 import reactor.core.publisher.Mono;
 
-import java.util.List;
-
 @EnableWebFluxSecurity
 @Configuration
 public class SecurityConfig {
