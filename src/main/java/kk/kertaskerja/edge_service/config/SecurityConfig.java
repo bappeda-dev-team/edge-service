@@ -2,6 +2,7 @@ package kk.kertaskerja.edge_service.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
@@ -16,8 +17,13 @@ import org.springframework.security.web.server.authentication.logout.ServerLogou
 import org.springframework.security.web.server.csrf.CookieServerCsrfTokenRepository;
 import org.springframework.security.web.server.csrf.CsrfToken;
 import org.springframework.security.web.server.csrf.ServerCsrfTokenRequestAttributeHandler;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
+import org.springframework.web.cors.reactive.CorsWebFilter;
 import org.springframework.web.server.WebFilter;
 import reactor.core.publisher.Mono;
+
+import java.util.List;
 
 @EnableWebFluxSecurity
 @Configuration
@@ -32,6 +38,7 @@ public class SecurityConfig {
         return http
                 .authorizeExchange(exchanges ->
                         exchanges
+                                .pathMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                                 .pathMatchers("/actuator/**").permitAll()
                                 .pathMatchers("/login**").permitAll()
                                 .pathMatchers(
@@ -76,5 +83,18 @@ public class SecurityConfig {
             }));
             return chain.filter(exchange);
         };
+    }
+
+    @Bean
+    CorsWebFilter corsWebFilter(CorsProperties corsProperties) {
+        CorsConfiguration config = new CorsConfiguration();
+        config.setAllowCredentials(true);
+        config.setAllowedOriginPatterns(corsProperties.getAllowedOrigins());
+        config.setAllowedHeaders(corsProperties.getAllowedHeaders());
+        config.setAllowedMethods(corsProperties.getAllowedMethods());
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", config);
+        return new CorsWebFilter(source);
     }
 }

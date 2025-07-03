@@ -134,3 +134,18 @@ management:
   metrics:
     tags:
       application: ${spring.application.name}
+
+kertaskerja:
+  cors:
+    allowed-origins:
+      - "http://localhost:3000"
+      - "http://dev.kertaskerja.local:3000"
+    allowed-headers:
+      - "*"
+    allowed-methods:
+      - "GET"
+      - "POST"
+      - "PATCH"
+      - "PUT"
+      - "DELETE"
+      - "OPTIONS"
