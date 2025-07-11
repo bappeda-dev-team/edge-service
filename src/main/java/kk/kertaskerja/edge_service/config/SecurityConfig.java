@@ -23,8 +23,6 @@ import org.springframework.web.cors.reactive.CorsWebFilter;
 import org.springframework.web.server.WebFilter;
 import reactor.core.publisher.Mono;
 
-import java.util.List;
-
 @EnableWebFluxSecurity
 @Configuration
 public class SecurityConfig {
@@ -36,6 +34,7 @@ public class SecurityConfig {
     @Bean
     SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http, ReactiveClientRegistrationRepository clientRegistrationRepository) {
         return http
+                .cors(Customizer.withDefaults())
                 .authorizeExchange(exchanges ->
                         exchanges
                                 .pathMatchers(HttpMethod.OPTIONS, "/**").permitAll()
@@ -89,9 +88,9 @@ public class SecurityConfig {
     CorsWebFilter corsWebFilter(CorsProperties corsProperties) {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowCredentials(true);
-        config.setAllowedOrigins(List.of("http://localhost:3000", "https://manrisk.kertaskerja.cc"));
-        config.setAllowedMethods(List.of("GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"));
-        config.setAllowedHeaders(List.of("*"));
+        config.setAllowedOrigins(corsProperties.getAllowedOrigins());
+        config.setAllowedHeaders(corsProperties.getAllowedHeaders());
+        config.setAllowedMethods(corsProperties.getAllowedMethods());
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
