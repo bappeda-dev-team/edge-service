@@ -1,12 +1,11 @@
 package kk.kertaskerja.edge_service;
 
-import kk.kertaskerja.edge_service.config.CorsProperties;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 
-@EnableConfigurationProperties(CorsProperties.class)
 @SpringBootApplication
+@ConfigurationPropertiesScan
 public class EdgeServiceApplication {
 
 	public static void main(String[] args) {
