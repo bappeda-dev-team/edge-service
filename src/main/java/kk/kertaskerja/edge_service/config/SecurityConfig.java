@@ -49,6 +49,7 @@ public class SecurityConfig {
                                         "/assets/**",
                                         "/images/**",
                                         "/fonts/**").permitAll() // Allow public access to these paths
+                                .pathMatchers("/perencanaan/**","/realisasi/**", "/laporan/**").permitAll() // frontend lain
                                 .anyExchange().authenticated()
                 )
                 .exceptionHandling(exceptionHandling ->
