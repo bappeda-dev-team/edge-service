@@ -79,7 +79,7 @@ spring:
         registration:
           keycloak:
             client-id: edge-service
-            client-secret: GBferDkkn2imzmlvDVcnKynymUtiI2Fu
+            client-secret: kertaskerja-secret
             scope: openid,roles
         provider:
           keycloak:

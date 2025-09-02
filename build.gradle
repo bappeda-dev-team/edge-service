@@ -9,7 +9,7 @@ version = '0.0.1-SNAPSHOT'
 
 java {
 	toolchain {
-		languageVersion = JavaLanguageVersion.of(17)
+		languageVersion = JavaLanguageVersion.of(21)
 	}
 }
 
@@ -56,7 +56,7 @@ tasks.named('test') {
 
 bootBuildImage {
 	imageName = "${project.name}"
-	environment = ["BP_JVM_VERSION" : "17.*"]
+	environment = ["BP_JVM_VERSION" : "21.*"]
 
 	if (System.getProperty( "os.arch" ).toLowerCase().startsWith('aarch')) {
 		builder = "paketobuildpacks/builder-jammy-buildpackless-tiny"

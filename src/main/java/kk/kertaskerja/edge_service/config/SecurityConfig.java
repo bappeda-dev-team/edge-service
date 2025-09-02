@@ -2,21 +2,16 @@ package kk.kertaskerja.edge_service.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
-import org.springframework.security.config.Customizer;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
+import org.springframework.security.config.web.server.SecurityWebFiltersOrder;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.oauth2.client.oidc.web.server.logout.OidcClientInitiatedServerLogoutSuccessHandler;
 import org.springframework.security.oauth2.client.registration.ReactiveClientRegistrationRepository;
-import org.springframework.security.oauth2.client.web.server.ServerOAuth2AuthorizedClientRepository;
-import org.springframework.security.oauth2.client.web.server.WebSessionServerOAuth2AuthorizedClientRepository;
 import org.springframework.security.web.server.SecurityWebFilterChain;
-import org.springframework.security.web.server.authentication.HttpStatusServerEntryPoint;
+import org.springframework.security.web.server.authentication.AuthenticationWebFilter;
 import org.springframework.security.web.server.authentication.logout.ServerLogoutSuccessHandler;
-import org.springframework.security.web.server.csrf.CookieServerCsrfTokenRepository;
 import org.springframework.security.web.server.csrf.CsrfToken;
-import org.springframework.security.web.server.csrf.ServerCsrfTokenRequestAttributeHandler;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
 import org.springframework.web.cors.reactive.CorsWebFilter;
@@ -26,45 +21,34 @@ import reactor.core.publisher.Mono;
 @EnableWebFluxSecurity
 @Configuration
 public class SecurityConfig {
-    @Bean
-    ServerOAuth2AuthorizedClientRepository authorizedClientRepository() {
-        return new WebSessionServerOAuth2AuthorizedClientRepository();
+    private final SessionAuthenticationManager sessionAuthManager;
+
+    public SecurityConfig(SessionAuthenticationManager sessionAuthManager) {
+        this.sessionAuthManager = sessionAuthManager;
     }
 
     @Bean
-    SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http, ReactiveClientRegistrationRepository clientRegistrationRepository) {
-        return http
-                .cors(Customizer.withDefaults())
-                .authorizeExchange(exchanges ->
-                        exchanges
-                                .pathMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                                .pathMatchers("/actuator/**").permitAll()
-                                .pathMatchers("/login**").permitAll()
-                                .pathMatchers(
-                                        "/",
-                                        "/*.css",
-                                        "/*.js",
-                                        "/favicon.ico",
-                                        "/_next/**",
-                                        "/assets/**",
-                                        "/images/**",
-                                        "/fonts/**").permitAll() // Allow public access to these paths
-                                .pathMatchers("/perencanaan/**","/realisasi/**", "/laporan/**").permitAll() // frontend lain
-                                .anyExchange().authenticated()
+    public SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http) {
+        AuthenticationWebFilter authWebFilter = new AuthenticationWebFilter(sessionAuthManager);
+        authWebFilter.setServerAuthenticationConverter(exchange -> {
+            String sessionId = exchange.getRequest().getHeaders().getFirst("X-Session-Id");
+            if (sessionId != null && !sessionId.isBlank()) {
+                return Mono.just(new UsernamePasswordAuthenticationToken(sessionId, sessionId));
+            }
+            return Mono.empty();
+        });
+
+        return http.csrf(ServerHttpSecurity.CsrfSpec::disable)
+                .authorizeExchange(exchanges -> exchanges
+                        .pathMatchers("/auth/login").permitAll()
+                        .anyExchange().authenticated()
                 )
-                .exceptionHandling(exceptionHandling ->
-                        exceptionHandling.authenticationEntryPoint(
-                                new HttpStatusServerEntryPoint(HttpStatus.UNAUTHORIZED)
-                        )
-                )
-                .oauth2Login(Customizer.withDefaults())
-                .oauth2ResourceServer((oauth2) -> oauth2.jwt(Customizer.withDefaults()))
-                .logout(logout -> logout.logoutSuccessHandler(oidcLogoutSuccessHandler(clientRegistrationRepository)))
-                .csrf(csrf -> csrf
-                        .csrfTokenRepository(CookieServerCsrfTokenRepository.withHttpOnlyFalse())
-                        .csrfTokenRequestHandler(new ServerCsrfTokenRequestAttributeHandler())
-                )
+                .addFilterAt(authWebFilter, SecurityWebFiltersOrder.AUTHENTICATION)
                 .build();
+    }
+
+    public SessionAuthenticationConverter sessionAuthenticationConverter() {
+        return new SessionAuthenticationConverter();
     }
 
     private ServerLogoutSuccessHandler oidcLogoutSuccessHandler(ReactiveClientRegistrationRepository clientRegistrationRepository) {
