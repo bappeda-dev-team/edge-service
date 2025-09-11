@@ -13,7 +13,7 @@ spring:
   data:
     redis:
       connect-timeout: 2s
-      host: localhost
+      host: 192.168.194.217
       port: 6379
       timeout: 1s
   session:
