@@ -1,6 +1,7 @@
 package kk.kertaskerja.edge_service.filter;
 
 import kk.kertaskerja.edge_service.service.SessionService;
+import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
@@ -12,13 +13,10 @@ import reactor.core.publisher.Mono;
 
 @Slf4j
 @Component
+@AllArgsConstructor
 public class SessionToBearerFilter implements GlobalFilter, Ordered {
 
     private final SessionService sessionService;
-
-    public SessionToBearerFilter(SessionService sessionService) {
-        this.sessionService = sessionService;
-    }
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
@@ -36,10 +34,7 @@ public class SessionToBearerFilter implements GlobalFilter, Ordered {
 
                     if (token != null) {
                         ServerHttpRequest mutatedRequest = exchange.getRequest().mutate()
-                                .headers(httpHeaders -> {
-                                    httpHeaders.remove("X-Session-Id");
-                                    httpHeaders.set("Authorization", "Bearer " + token);
-                                })
+                                .headers(httpHeaders -> httpHeaders.set("Authorization", "Bearer " + token))
                                 .build();
 
                         ServerWebExchange mutatedExchange = exchange.mutate()

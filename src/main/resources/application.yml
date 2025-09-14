@@ -13,7 +13,7 @@ spring:
   data:
     redis:
       connect-timeout: 2s
-      host: 192.168.194.217
+      host: 192.168.194.208
       port: 6379
       timeout: 1s
   session:
@@ -68,26 +68,41 @@ spring:
           args:
             fallbackUri: forward:/kertaskerja-fallback
       routes:
-        - id: manrisk-route
-          uri: http://127.0.0.1:49490
+        - id: perencanaan-service
+          uri: http://192.168.194.166
           predicates:
-            - Path=/api/manrisk/**
+            - Path=/api/v1/perencanaan/**
+          filters:
+            - StripPrefix=3
+            - name: CircuitBreaker
+              args:
+                name: perencanaanCircuitBreaker
+                fallbackUri: forward:/perencanaan-fallback
+        - id: laporan-service
+          uri: http://localhost:8080
+          predicates:
+            - Path=/api/v1/laporan/**
+          filters:
+            - StripPrefix=3
+            - name: CircuitBreaker
+              args:
+                name: laporanCircuitBreaker
+                fallbackUri: forward:/laporan-fallback
 
   security:
     oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://keycloak.kertaskerja.local/realms/KabMadiun
       client:
+        provider:
+          keycloak:
+            issuer-uri: http://keycloak.kertaskerja.local/realms/KabMadiun
         registration:
           keycloak:
             client-id: edge-service
             client-secret: kertaskerja-secret
             scope: openid,roles
-        provider:
-          keycloak:
-            issuer-uri: http://keycloak.kertaskerja.local/realms/KabMadiun
-      resourceserver:
-        jwt:
-          issuer-uri: http://keycloak.kertaskerja.local/realms/KabMadiun
-
 
 resilience4j:
   circuitbreaker:
