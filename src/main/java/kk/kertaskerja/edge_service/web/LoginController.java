@@ -70,13 +70,11 @@ public class LoginController {
                 });
     }
 
-    public record RefreshRequest(String sessionId) {}
-
     @PostMapping("/refresh")
-    public Mono<Map<String, Object>> refresh(@RequestBody RefreshRequest refreshRequest) {
+    public Mono<Map<String, Object>> refresh(@RequestHeader("X-Session-Id") String sessionId) {
         String tokenUrl = issuerUri + "/protocol/openid-connect/token";
 
-        return redisTemplate.opsForHash().get("tokens", refreshRequest.sessionId)
+        return redisTemplate.opsForHash().get("tokens", sessionId)
                 .cast(Map.class)
                 .flatMap(savedTokens -> {
                     String refreshToken = (String) savedTokens.get("refresh_token");
@@ -84,7 +82,7 @@ public class LoginController {
                     return webClient.post()
                             .uri(tokenUrl)
                             .contentType(MediaType.APPLICATION_FORM_URLENCODED)
-                            .body(BodyInserters.fromFormData("grant_type", "password")
+                            .body(BodyInserters.fromFormData("grant_type", "refresh_token")
                                     .with("client_id", clientId)
                                     .with("client_secret", clientSecret)
                                     .with("refresh_token", refreshToken)
@@ -93,16 +91,16 @@ public class LoginController {
                             .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {
                             })
                             .flatMap(newTokens -> {
-                                newTokens.put("sessionId", refreshRequest.sessionId);
+                                newTokens.put("sessionId", sessionId);
                                 return redisTemplate.opsForHash()
-                                        .put("tokens", refreshRequest.sessionId, newTokens)
+                                        .put("tokens", sessionId, newTokens)
                                         .thenReturn(newTokens);
                             });
                 });
     }
 
     @PostMapping("/logout")
-    public Mono<String> logout(@RequestParam String sessionId) {
+    public Mono<String> logout(@RequestHeader("X-Session-Id") String sessionId) {
         return redisTemplate.opsForHash().remove("tokens", sessionId)
                 .flatMap(count -> {
                     if (count > 0) {
