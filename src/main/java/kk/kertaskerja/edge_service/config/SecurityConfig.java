@@ -44,8 +44,9 @@ public class SecurityConfig {
                 .cors(Customizer.withDefaults())
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
                 .authorizeExchange(exchanges -> exchanges
-                        .pathMatchers("/auth/login").permitAll()
-                        .anyExchange().authenticated())
+                    .pathMatchers("/auth/login").permitAll()
+                    .pathMatchers("/actuator/health/ping").permitAll()
+                    .anyExchange().authenticated())
                 .addFilterAt(authWebFilter, SecurityWebFiltersOrder.AUTHENTICATION)
                 .build();
     }
