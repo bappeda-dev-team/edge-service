@@ -3,6 +3,9 @@ package kk.kertaskerja.edge_service.config;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.server.reactive.ServerHttpResponse;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
@@ -41,7 +44,13 @@ public class SecurityConfig {
             if (sessionId != null && !sessionId.isBlank()) {
                 return Mono.just(new UsernamePasswordAuthenticationToken(sessionId, sessionId));
             }
-            return Mono.empty();
+            return Mono.error(new BadCredentialsException("Invalid session"));
+        });
+
+        authWebFilter.setAuthenticationFailureHandler((webFilterExchange, exception) -> {
+            ServerHttpResponse response = webFilterExchange.getExchange().getResponse();
+            response.setStatusCode(HttpStatus.UNAUTHORIZED);
+            return response.setComplete();
         });
 
         return http
