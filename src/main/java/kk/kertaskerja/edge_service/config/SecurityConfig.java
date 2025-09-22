@@ -1,8 +1,10 @@
 package kk.kertaskerja.edge_service.config;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.security.config.web.server.SecurityWebFiltersOrder;
@@ -20,9 +22,11 @@ import org.springframework.web.server.WebFilter;
 
 import reactor.core.publisher.Mono;
 
+@Slf4j
 @EnableWebFluxSecurity
 @Configuration
 public class SecurityConfig {
+    //private static final Logger log = LoggerFactory.getLogger(SecurityConfig.class);
     private final SessionAuthenticationManager sessionAuthManager;
 
     public SecurityConfig(SessionAuthenticationManager sessionAuthManager) {
@@ -44,6 +48,7 @@ public class SecurityConfig {
                 .cors(Customizer.withDefaults())
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
                 .authorizeExchange(exchanges -> exchanges
+                    .pathMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                     .pathMatchers("/auth/login").permitAll()
                     .pathMatchers("/actuator/health/ping").permitAll()
                     .anyExchange().authenticated())
@@ -81,6 +86,10 @@ public class SecurityConfig {
         config.setAllowedOrigins(corsProperties.getAllowedOrigins());
         config.setAllowedHeaders(corsProperties.getAllowedHeaders());
         config.setAllowedMethods(corsProperties.getAllowedMethods());
+
+        log.info("Configuring CORS with allowed origins: {}", corsProperties.getAllowedOrigins());
+        log.info("Configuring CORS with allowed headers: {}", corsProperties.getAllowedHeaders());
+        log.info("Configuring CORS with allowed methods: {}", corsProperties.getAllowedMethods());
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
