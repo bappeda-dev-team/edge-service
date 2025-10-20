@@ -59,6 +59,7 @@ public class SecurityConfig {
                         .pathMatchers(HttpMethod.OPTIONS, "/**").permitAll() // preflight selalu diizinkan
                         .pathMatchers("/auth/login").permitAll()
                         .pathMatchers("/actuator/health/ping").permitAll()
+                        .pathMatchers("/", "/*.css", "/*.js", "/favicon.ico", "/_next/**", "/assets/**", "/images/**", "/fonts/**", "/realisasi/**").permitAll()
                         .anyExchange().authenticated())
                 .addFilterAt(authWebFilter, SecurityWebFiltersOrder.AUTHENTICATION)
                 .build();
