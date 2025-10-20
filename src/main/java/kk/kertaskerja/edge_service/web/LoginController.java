@@ -1,6 +1,7 @@
 package kk.kertaskerja.edge_service.web;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import kk.kertaskerja.edge_service.token.TokenResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.data.redis.core.ReactiveRedisTemplate;
@@ -78,7 +79,7 @@ public class LoginController {
     }
 
     @PostMapping("/refresh")
-    public Mono<Map<String, Object>> refresh(@RequestHeader("X-Session-Id") String sessionId) {
+    public Mono<TokenResponse> refresh(@RequestHeader("X-Session-Id") String sessionId) {
         String tokenUrl = issuerUri + "/protocol/openid-connect/token";
 
         return redisTemplate.opsForValue()
@@ -86,9 +87,9 @@ public class LoginController {
                 .cast(String.class)
                 .flatMap(json -> {
                     try {
-                        Map<String, Object> savedTokens = new ObjectMapper().readValue(json, Map.class);
+                        TokenResponse savedTokens = new ObjectMapper().readValue(json, TokenResponse.class);
 
-                        String refreshToken = (String) savedTokens.get("refresh_token");
+                        String refreshToken = savedTokens.refreshToken();
 
                         return webClient.post()
                                 .uri(tokenUrl)
@@ -100,14 +101,14 @@ public class LoginController {
                                 )
                                 .exchangeToMono(response -> {
                                     if (response.statusCode().is2xxSuccessful()) {
-                                        return response.bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {});
+                                        return response.bodyToMono(TokenResponse.class);
                                     } else {
                                         return response.bodyToMono(String.class)
                                                 .flatMap(body -> Mono.error(new RuntimeException("Login gagal: " + body)));
                                     }
                                 })
                                 .flatMap(newTokens -> {
-                                    if (!newTokens.containsKey("access_token")) {
+                                    if (newTokens.accessToken() == null) {
                                         return Mono.error(new RuntimeException("Login gagal: tidak ada access_token"));
                                     }
                                     try {
