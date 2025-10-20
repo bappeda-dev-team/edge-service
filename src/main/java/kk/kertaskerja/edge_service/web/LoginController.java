@@ -11,11 +11,13 @@ import org.springframework.web.reactive.function.client.WebClient;
 
 import reactor.core.publisher.Mono;
 
+import java.time.Duration;
 import java.util.Map;
 import java.util.UUID;
 
 @RestController
 @RequestMapping("/auth")
+@SuppressWarnings("unused")
 public class LoginController {
     private final WebClient webClient;
     private final ReactiveRedisTemplate<String, Object> redisTemplate;
@@ -49,20 +51,25 @@ public class LoginController {
                         .with("username", loginRequest.username())
                         .with("password", loginRequest.password())
                 )
-                .exchangeToMono(response ->
-                        response.bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {})
-                )
+                .exchangeToMono(response -> {
+                    if (response.statusCode().is2xxSuccessful()) {
+                        return response.bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {});
+                    } else {
+                        return response.bodyToMono(String.class)
+                                .flatMap(body -> Mono.error(new RuntimeException("Login gagal: " + body)));
+                    }
+                })
                 .flatMap(tokens -> {
-                    // generate sessionId
+                    if (!tokens.containsKey("access_token")) {
+                        return Mono.error(new RuntimeException("Login gagal: tidak ada access_token"));
+                    }
                     String sessionId = UUID.randomUUID().toString();
 
                     try {
-                        // serialize Map -> JSON String
                         String jsonTokens = new ObjectMapper().writeValueAsString(tokens);
 
-                        // simpan JSON string di redis
                         return redisTemplate.opsForValue()
-                                .set("session:" + sessionId, jsonTokens)
+                                .set("session:" + sessionId, jsonTokens, Duration.ofHours(5))
                                 .thenReturn(Map.of("sessionId", sessionId));
                     } catch (Exception e) {
                         return Mono.error(e);
@@ -74,36 +81,56 @@ public class LoginController {
     public Mono<Map<String, Object>> refresh(@RequestHeader("X-Session-Id") String sessionId) {
         String tokenUrl = issuerUri + "/protocol/openid-connect/token";
 
-        return redisTemplate.opsForHash().get("tokens", sessionId)
-                .cast(Map.class)
-                .flatMap(savedTokens -> {
-                    String refreshToken = (String) savedTokens.get("refresh_token");
+        return redisTemplate.opsForValue()
+                .get("session:" + sessionId)
+                .cast(String.class)
+                .flatMap(json -> {
+                    try {
+                        Map<String, Object> savedTokens = new ObjectMapper().readValue(json, Map.class);
 
-                    return webClient.post()
-                            .uri(tokenUrl)
-                            .contentType(MediaType.APPLICATION_FORM_URLENCODED)
-                            .body(BodyInserters.fromFormData("grant_type", "refresh_token")
-                                    .with("client_id", clientId)
-                                    .with("client_secret", clientSecret)
-                                    .with("refresh_token", refreshToken)
-                            )
-                            .retrieve()
-                            .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {
-                            })
-                            .flatMap(newTokens -> {
-                                newTokens.put("sessionId", sessionId);
-                                return redisTemplate.opsForHash()
-                                        .put("tokens", sessionId, newTokens)
-                                        .thenReturn(newTokens);
-                            });
+                        String refreshToken = (String) savedTokens.get("refresh_token");
+
+                        return webClient.post()
+                                .uri(tokenUrl)
+                                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                                .body(BodyInserters.fromFormData("grant_type", "refresh_token")
+                                        .with("client_id", clientId)
+                                        .with("client_secret", clientSecret)
+                                        .with("refresh_token", refreshToken)
+                                )
+                                .exchangeToMono(response -> {
+                                    if (response.statusCode().is2xxSuccessful()) {
+                                        return response.bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {});
+                                    } else {
+                                        return response.bodyToMono(String.class)
+                                                .flatMap(body -> Mono.error(new RuntimeException("Login gagal: " + body)));
+                                    }
+                                })
+                                .flatMap(newTokens -> {
+                                    if (!newTokens.containsKey("access_token")) {
+                                        return Mono.error(new RuntimeException("Login gagal: tidak ada access_token"));
+                                    }
+                                    try {
+                                        String newJson = new ObjectMapper().writeValueAsString(newTokens);
+                                        return redisTemplate.opsForValue()
+                                                .set("session:" + sessionId, newJson, Duration.ofHours(5))
+                                                .thenReturn(newTokens);
+                                    } catch (Exception e) {
+                                        return Mono.error(e);
+                                    }
+                                });
+
+                    } catch (Exception e) {
+                        return Mono.error(e);
+                    }
                 });
     }
 
     @PostMapping("/logout")
     public Mono<String> logout(@RequestHeader("X-Session-Id") String sessionId) {
-        return redisTemplate.opsForHash().remove("tokens", sessionId)
-                .flatMap(count -> {
-                    if (count > 0) {
+        return redisTemplate.opsForValue().delete("session:" + sessionId)
+                .flatMap(success -> {
+                    if (success) {
                         return Mono.just("Session " + sessionId + " removed");
                     } else {
                         return Mono.error(new RuntimeException("Session not found"));
