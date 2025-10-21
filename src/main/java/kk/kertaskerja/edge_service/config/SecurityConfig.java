@@ -22,6 +22,7 @@ import reactor.core.publisher.Mono;
 @Slf4j
 @EnableWebFluxSecurity
 @Configuration
+@SuppressWarnings("unused")
 public class SecurityConfig {
     private final SessionAuthenticationManager sessionAuthManager;
 
@@ -62,6 +63,8 @@ public class SecurityConfig {
                         .pathMatchers("/", "/*.css", "/*.js", "/favicon.ico", "/_next/**", "/assets/**", "/images/**", "/fonts/**", "/realisasi/**").permitAll()
                         .anyExchange().authenticated())
                 .addFilterAt(authWebFilter, SecurityWebFiltersOrder.AUTHENTICATION)
+                .formLogin(ServerHttpSecurity.FormLoginSpec::disable)
+                .httpBasic(ServerHttpSecurity.HttpBasicSpec::disable)
                 .build();
     }
 
