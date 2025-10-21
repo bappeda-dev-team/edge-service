@@ -17,6 +17,7 @@ import reactor.core.publisher.Mono;
 import java.util.Map;
 
 @RestController
+@SuppressWarnings("unused")
 public class UserController {
     private final ReactiveStringRedisTemplate redisTemplate;
     private final JwtDecoder jwtDecoder;
@@ -69,6 +70,27 @@ public class UserController {
                         );
 
                         return Mono.just(user);
+                    } catch (Exception e) {
+                        return Mono.error(new RuntimeException("Failed to parse session JWT", e));
+                    }
+                })
+                .switchIfEmpty(Mono.error(new RuntimeException("Invalid sessionId")));
+    }
+
+    @GetMapping("token-info")
+    public Mono<String> showToken(@RequestHeader("X-Session-Id") String sessionId) {
+        return redisTemplate.opsForValue().get("session:" + sessionId)
+                .flatMap(json -> {
+                    try {
+                        // Parse JSON tokens dari Redis
+                        Map<String, Object> tokens = objectMapper.readValue(json, new TypeReference<>() {});
+                        String accessToken = (String) tokens.get("access_token");
+
+                        if (accessToken == null) {
+                            return Mono.error(new RuntimeException("Access token not found"));
+                        }
+
+                        return Mono.just(accessToken);
                     } catch (Exception e) {
                         return Mono.error(new RuntimeException("Failed to parse session JWT", e));
                     }
