@@ -57,10 +57,10 @@ public class SecurityConfig {
                 .cors(Customizer.withDefaults()) // pastikan cors jalan lebih dulu
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
                 .authorizeExchange(exchanges -> exchanges
-                        .pathMatchers(HttpMethod.OPTIONS, "/**").permitAll() // preflight selalu diizinkan
+                        .pathMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .pathMatchers("/auth/login").permitAll()
+                        .pathMatchers("/api/docs/**").permitAll()
                         .pathMatchers("/actuator/health/ping").permitAll()
-                        .pathMatchers("/", "/*.css", "/*.js", "/favicon.ico", "/_next/**", "/assets/**", "/images/**", "/fonts/**", "/realisasi/**").permitAll()
                         .anyExchange().authenticated())
                 .addFilterAt(authWebFilter, SecurityWebFiltersOrder.AUTHENTICATION)
                 .formLogin(ServerHttpSecurity.FormLoginSpec::disable)
