@@ -59,7 +59,13 @@ public class SecurityConfig {
                 .authorizeExchange(exchanges -> exchanges
                         .pathMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .pathMatchers("/auth/login").permitAll()
-                        .pathMatchers("/api/docs/**").permitAll()
+                        .pathMatchers("/api/docs/**").permitAll() // docs
+                        .pathMatchers(
+                                    "/swagger-ui.html",
+                                    "/swagger-ui/**",
+                                    "/webjars/swagger-ui/**",
+                                    "/v3/api-docs/**"
+                                ).permitAll() // docs ui
                         .pathMatchers("/actuator/health/ping").permitAll()
                         .anyExchange().authenticated())
                 .addFilterAt(authWebFilter, SecurityWebFiltersOrder.AUTHENTICATION)
