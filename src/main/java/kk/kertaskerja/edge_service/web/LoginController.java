@@ -146,9 +146,9 @@ public class LoginController {
     private ResponseEntity<Map<String, Object>> buildLoginResponse(String sessionId) {
         ResponseCookie cookie = ResponseCookie.from("sessionId", sessionId)
                 .httpOnly(true)
-                .sameSite("Lax")
+                .sameSite("None")
+                .secure(true)
                 .path("/")
-                // .secure(true) // AKTIFKAN kalau sudah HTTPS
                 .maxAge(Duration.ofHours(5))
                 .build();
 
