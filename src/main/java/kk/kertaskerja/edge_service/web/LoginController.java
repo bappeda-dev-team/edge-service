@@ -6,6 +6,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.data.redis.core.ReactiveRedisTemplate;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseCookie;
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpHeaders;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -37,10 +40,11 @@ public class LoginController {
         this.redisTemplate = redisTemplate;
     }
 
-    public record LoginRequest(String username, String password) {}
+    public record LoginRequest(String username, String password) {
+    }
 
     @PostMapping("/login")
-    public Mono<Map<String, Object>> login(@RequestBody LoginRequest loginRequest) {
+    public Mono<ResponseEntity<Map<String, Object>>> login(@RequestBody LoginRequest loginRequest) {
         String tokenUrl = issuerUri + "/protocol/openid-connect/token";
 
         return webClient.post()
@@ -50,11 +54,11 @@ public class LoginController {
                         .with("client_id", clientId)
                         .with("client_secret", clientSecret)
                         .with("username", loginRequest.username())
-                        .with("password", loginRequest.password())
-                )
+                        .with("password", loginRequest.password()))
                 .exchangeToMono(response -> {
                     if (response.statusCode().is2xxSuccessful()) {
-                        return response.bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {});
+                        return response.bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {
+                        });
                     } else {
                         return response.bodyToMono(String.class)
                                 .flatMap(body -> Mono.error(new RuntimeException("Login gagal: " + body)));
@@ -71,7 +75,7 @@ public class LoginController {
 
                         return redisTemplate.opsForValue()
                                 .set("session:" + sessionId, jsonTokens, Duration.ofHours(5))
-                                .thenReturn(Map.of("sessionId", sessionId));
+                                .thenReturn(buildLoginResponse(sessionId));
                     } catch (Exception e) {
                         return Mono.error(e);
                     }
@@ -97,14 +101,14 @@ public class LoginController {
                                 .body(BodyInserters.fromFormData("grant_type", "refresh_token")
                                         .with("client_id", clientId)
                                         .with("client_secret", clientSecret)
-                                        .with("refresh_token", refreshToken)
-                                )
+                                        .with("refresh_token", refreshToken))
                                 .exchangeToMono(response -> {
                                     if (response.statusCode().is2xxSuccessful()) {
                                         return response.bodyToMono(TokenResponse.class);
                                     } else {
                                         return response.bodyToMono(String.class)
-                                                .flatMap(body -> Mono.error(new RuntimeException("Login gagal: " + body)));
+                                                .flatMap(body -> Mono
+                                                        .error(new RuntimeException("Login gagal: " + body)));
                                     }
                                 })
                                 .flatMap(newTokens -> {
@@ -137,5 +141,19 @@ public class LoginController {
                         return Mono.error(new RuntimeException("Session not found"));
                     }
                 });
+    }
+
+    private ResponseEntity<Map<String, Object>> buildLoginResponse(String sessionId) {
+        ResponseCookie cookie = ResponseCookie.from("sessionId", sessionId)
+                .httpOnly(true)
+                .sameSite("Lax")
+                .path("/")
+                // .secure(true) // AKTIFKAN kalau sudah HTTPS
+                .maxAge(Duration.ofHours(5))
+                .build();
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                .body(Map.of("sessionId", sessionId));
     }
 }
