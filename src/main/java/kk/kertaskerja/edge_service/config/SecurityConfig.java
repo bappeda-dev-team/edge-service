@@ -4,8 +4,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.http.HttpCookie;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
@@ -22,7 +24,6 @@ import reactor.core.publisher.Mono;
 @Slf4j
 @EnableWebFluxSecurity
 @Configuration
-@SuppressWarnings("unused")
 public class SecurityConfig {
     private final SessionAuthenticationManager sessionAuthManager;
 
@@ -34,6 +35,16 @@ public class SecurityConfig {
     public SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http) {
         AuthenticationWebFilter authWebFilter = new AuthenticationWebFilter(sessionAuthManager);
         authWebFilter.setServerAuthenticationConverter(exchange -> {
+            ServerHttpRequest request = exchange.getRequest();
+
+            HttpCookie sessionCookie = request.getCookies().getFirst("sessionId");
+            if (sessionCookie != null && !sessionCookie.getValue().isBlank()) {
+                String sessionId = sessionCookie.getValue();
+                return Mono.just(
+                        new UsernamePasswordAuthenticationToken(sessionId, sessionId));
+            }
+
+            // fallback
             String sessionId = exchange.getRequest().getHeaders().getFirst("X-Session-Id");
             if (sessionId != null && !sessionId.isBlank()) {
                 return Mono.just(new UsernamePasswordAuthenticationToken(sessionId, sessionId));
@@ -61,11 +72,11 @@ public class SecurityConfig {
                         .pathMatchers("/auth/login").permitAll()
                         .pathMatchers("/api/docs/**").permitAll() // docs
                         .pathMatchers(
-                                    "/swagger-ui.html",
-                                    "/swagger-ui/**",
-                                    "/webjars/swagger-ui/**",
-                                    "/v3/api-docs/**"
-                                ).permitAll() // docs ui
+                                "/swagger-ui.html",
+                                "/swagger-ui/**",
+                                "/webjars/swagger-ui/**",
+                                "/v3/api-docs/**")
+                        .permitAll() // docs ui
                         .pathMatchers("/actuator/health/ping").permitAll()
                         .anyExchange().authenticated())
                 .addFilterAt(authWebFilter, SecurityWebFiltersOrder.AUTHENTICATION)
@@ -81,10 +92,6 @@ public class SecurityConfig {
         config.setAllowedOriginPatterns(corsProperties.getAllowedOrigins());
         config.setAllowedHeaders(corsProperties.getAllowedHeaders());
         config.setAllowedMethods(corsProperties.getAllowedMethods());
-
-        log.info("Configuring CORS with allowed origins: {}", corsProperties.getAllowedOrigins());
-        log.info("Configuring CORS with allowed headers: {}", corsProperties.getAllowedHeaders());
-        log.info("Configuring CORS with allowed methods: {}", corsProperties.getAllowedMethods());
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
