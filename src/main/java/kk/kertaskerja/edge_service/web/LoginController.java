@@ -35,6 +35,9 @@ public class LoginController {
     @Value("${spring.security.oauth2.resourceserver.jwt.issuer-uri}")
     String issuerUri;
 
+    @Value("${app.env}")
+    String appEnv; // local | prod
+
     public LoginController(WebClient.Builder webClientBuilder, ReactiveRedisTemplate<String, Object> redisTemplate) {
         this.webClient = webClientBuilder.build();
         this.redisTemplate = redisTemplate;
@@ -132,22 +135,26 @@ public class LoginController {
     }
 
     @PostMapping("/logout")
-    public Mono<String> logout(@RequestHeader("X-Session-Id") String sessionId) {
-        return redisTemplate.opsForValue().delete("session:" + sessionId)
-                .flatMap(success -> {
-                    if (success) {
-                        return Mono.just("Session " + sessionId + " removed");
-                    } else {
-                        return Mono.error(new RuntimeException("Session not found"));
-                    }
-                });
+    public Mono<ResponseEntity<String>> logout(
+            @RequestHeader(value = "X-Session-Id", required = false) String sessionId) {
+        if (sessionId == null || sessionId.isBlank()) {
+            // Tidak ada session → tetap dianggap logout
+            return Mono.just(ResponseEntity.ok("Already logged out"));
+        }
+
+        return redisTemplate.opsForValue()
+                .delete("session:" + sessionId)
+                .onErrorResume(err -> Mono.empty()) // Redis error ≠ logout gagal
+                .thenReturn(ResponseEntity.ok("Logged out"));
     }
 
     private ResponseEntity<Map<String, Object>> buildLoginResponse(String sessionId) {
+        boolean isProd = "prod".equalsIgnoreCase(appEnv);
+
         ResponseCookie cookie = ResponseCookie.from("sessionId", sessionId)
                 .httpOnly(true)
-                .sameSite("None")
-                .secure(true)
+                .sameSite(isProd ? "None" : "Lax")
+                .secure(isProd)
                 .path("/")
                 .maxAge(Duration.ofHours(5))
                 .build();

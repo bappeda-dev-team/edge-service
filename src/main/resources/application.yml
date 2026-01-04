@@ -144,3 +144,6 @@ kertaskerja:
       - "PUT"
       - "DELETE"
       - "OPTIONS"
+
+app:
+  env: "prod"
