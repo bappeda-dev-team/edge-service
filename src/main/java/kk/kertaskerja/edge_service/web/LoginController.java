@@ -21,7 +21,6 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/auth")
-@SuppressWarnings("unused")
 public class LoginController {
     private final WebClient webClient;
     private final ReactiveRedisTemplate<String, Object> redisTemplate;
@@ -76,6 +75,8 @@ public class LoginController {
                     try {
                         String jsonTokens = new ObjectMapper().writeValueAsString(tokens);
 
+                        // TODO: ACCEPT EXTERNAL CONFIGURATION FOR TOKEN DURATION
+                        // TODO: ACCEPT EXTERNAL CONFIGURATION FOR SESSION NAME
                         return redisTemplate.opsForValue()
                                 .set("session:" + sessionId, jsonTokens, Duration.ofHours(5))
                                 .thenReturn(buildLoginResponse(sessionId));
@@ -135,17 +136,18 @@ public class LoginController {
     }
 
     @PostMapping("/logout")
-    public Mono<ResponseEntity<String>> logout(
+    public Mono<ResponseEntity<Map<String, Object>>> logout(
             @RequestHeader(value = "X-Session-Id", required = false) String sessionId) {
+
         if (sessionId == null || sessionId.isBlank()) {
             // Tidak ada session → tetap dianggap logout
-            return Mono.just(ResponseEntity.ok("Already logged out"));
+            return Mono.just(buildLogoutResponse());
         }
 
         return redisTemplate.opsForValue()
                 .delete("session:" + sessionId)
                 .onErrorResume(err -> Mono.empty()) // Redis error ≠ logout gagal
-                .thenReturn(ResponseEntity.ok("Logged out"));
+                .thenReturn(buildLogoutResponse());
     }
 
     private ResponseEntity<Map<String, Object>> buildLoginResponse(String sessionId) {
@@ -162,5 +164,21 @@ public class LoginController {
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, cookie.toString())
                 .body(Map.of("sessionId", sessionId));
+    }
+
+    private ResponseEntity<Map<String, Object>> buildLogoutResponse() {
+        boolean isProd = "prod".equalsIgnoreCase(appEnv);
+
+        ResponseCookie deleteCookie = ResponseCookie.from("sessionId", "")
+                .httpOnly(true)
+                .sameSite(isProd ? "None" : "Lax")
+                .secure(isProd)
+                .path("/")
+                .maxAge(Duration.ZERO) // kunci logout
+                .build();
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, deleteCookie.toString())
+                .body(Map.of("message", "Logged out"));
     }
 }
