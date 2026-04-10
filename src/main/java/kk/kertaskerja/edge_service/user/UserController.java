@@ -11,6 +11,7 @@ import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
 
@@ -41,6 +42,40 @@ public class UserController {
                 oidcUser.getClaim("nip"),
                 oidcUser.getClaimAsStringList("roles"));
         return Mono.just(user);
+    }
+
+    // JWT User Info
+    @GetMapping("user-info-alt")
+    public Mono<User> getUserInfoAlt(@CookieValue("sessionId") String sessionId) {
+        return redisTemplate.opsForValue().get("session:" + sessionId)
+                .flatMap(json -> {
+                    try {
+                        // Parse JSON tokens dari Redis
+                        Map<String, Object> tokens = objectMapper.readValue(json, new TypeReference<>() {});
+                        String accessToken = (String) tokens.get("access_token");
+
+                        if (accessToken == null) {
+                            return Mono.error(new RuntimeException("Access token not found"));
+                        }
+
+                        // Decode JWT
+                        Jwt jwt = jwtDecoder.decode(accessToken);
+
+                        // Buat User dari claim
+                        var user = new User(
+                                jwt.getClaimAsString("preferred_username"),
+                                jwt.getClaimAsString("given_name"),
+                                jwt.getClaimAsString("kode_opd"),
+                                jwt.getClaimAsString("nip"),
+                                jwt.getClaimAsStringList("roles")
+                        );
+
+                        return Mono.just(user);
+                    } catch (Exception e) {
+                        return Mono.error(new RuntimeException("Failed to parse session JWT", e));
+                    }
+                })
+                .switchIfEmpty(Mono.error(new RuntimeException("Invalid sessionId")));
     }
 
     // JWT User Info
