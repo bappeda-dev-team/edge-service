@@ -74,6 +74,7 @@ public class SecurityConfig {
                         .pathMatchers(
                                 "/swagger-ui.html",
                                 "/swagger-ui/**",
+                                "/api/webjars/swagger-ui/**",
                                 "/webjars/swagger-ui/**",
                                 "/v3/api-docs/**")
                         .permitAll() // docs ui
