@@ -1,9 +1,14 @@
 package kk.kertaskerja.edge_service.config;
 
 import lombok.extern.slf4j.Slf4j;
+
+import java.nio.charset.StandardCharsets;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -57,11 +62,27 @@ public class SecurityConfig {
             ServerHttpResponse response = webFilterExchange.getExchange().getResponse();
             response.setStatusCode(HttpStatus.UNAUTHORIZED);
 
+            // disable pop-up in browser
+            response.getHeaders().remove("WWW-Authenticate");
+            response.getHeaders().setContentType(MediaType.APPLICATION_JSON);
+
             // Tambahkan header CORS biar browser gak bego
             response.getHeaders().add("Access-Control-Allow-Origin", "*");
             response.getHeaders().add("Access-Control-Allow-Credentials", "true");
 
-            return response.setComplete();
+            // response unauthorized
+            String body = """
+                        {
+                          "status": 401,
+                          "error": "Unauthorized",
+                          "message": "Invalid session"
+                        }
+                    """;
+
+            DataBuffer buffer = response.bufferFactory()
+                    .wrap(body.getBytes(StandardCharsets.UTF_8));
+
+            return response.writeWith(Mono.just(buffer));
         });
 
         return http
@@ -80,6 +101,28 @@ public class SecurityConfig {
                         .permitAll() // docs ui
                         .pathMatchers("/actuator/health/ping").permitAll()
                         .anyExchange().authenticated())
+                // disable pop-up in browser, extra
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint((exchange, e) -> {
+                            ServerHttpResponse response = exchange.getResponse();
+                            response.setStatusCode(HttpStatus.UNAUTHORIZED);
+                            response.getHeaders().remove("WWW-Authenticate");
+
+                            response.getHeaders().setContentType(MediaType.APPLICATION_JSON);
+
+                            String body = """
+                                        {
+                                          "status": 401,
+                                          "error": "Unauthorized",
+                                          "message": "Authentication required"
+                                        }
+                                    """;
+
+                            DataBuffer buffer = response.bufferFactory()
+                                    .wrap(body.getBytes(StandardCharsets.UTF_8));
+
+                            return response.writeWith(Mono.just(buffer));
+                        }))
                 .addFilterAt(authWebFilter, SecurityWebFiltersOrder.AUTHENTICATION)
                 .formLogin(ServerHttpSecurity.FormLoginSpec::disable)
                 .httpBasic(ServerHttpSecurity.HttpBasicSpec::disable)
