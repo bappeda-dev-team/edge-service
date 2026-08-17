@@ -87,7 +87,8 @@ public class LoginController {
     }
 
     @PostMapping("/refresh")
-    public Mono<TokenResponse> refresh(@RequestHeader("X-Session-Id") String sessionId) {
+    public Mono<TokenResponse> refresh(
+        @CookieValue(value = "sessionId", required = false) String sessionId) {
         String tokenUrl = issuerUri + "/protocol/openid-connect/token";
 
         return redisTemplate.opsForValue()
@@ -137,17 +138,20 @@ public class LoginController {
 
     @PostMapping("/logout")
     public Mono<ResponseEntity<Map<String, Object>>> logout(
-            @RequestHeader(value = "X-Session-Id", required = false) String sessionId) {
+            @CookieValue(value = "sessionId", required = false) String sessionId) {
+
+        Mono<Boolean> deleteSession;
 
         if (sessionId == null || sessionId.isBlank()) {
             // Tidak ada session → tetap dianggap logout
             return Mono.just(buildLogoutResponse());
+        } else {
+            deleteSession = redisTemplate.opsForValue()
+                    .delete("session:" + sessionId)
+                    .onErrorResume(err -> Mono.empty()); // Redis error ≠ logout gagal
         }
 
-        return redisTemplate.opsForValue()
-                .delete("session:" + sessionId)
-                .onErrorResume(err -> Mono.empty()) // Redis error ≠ logout gagal
-                .thenReturn(buildLogoutResponse());
+        return deleteSession.thenReturn(buildLogoutResponse());
     }
 
     private ResponseEntity<Map<String, Object>> buildLoginResponse(String sessionId) {

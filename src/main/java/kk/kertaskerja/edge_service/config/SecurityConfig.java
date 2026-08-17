@@ -40,13 +40,26 @@ public class SecurityConfig {
     public SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http) {
         AuthenticationWebFilter authWebFilter = new AuthenticationWebFilter(sessionAuthManager);
         authWebFilter.setServerAuthenticationConverter(exchange -> {
-            ServerHttpRequest request = exchange.getRequest();
+            String path = exchange.getRequest()
+                    .getPath()
+                    .value();
 
-            HttpCookie sessionCookie = request.getCookies().getFirst("sessionId");
+            if (path.equals("/auth/login") ||
+                    path.equals("/auth/logout")) {
+                return Mono.empty();
+            }
+
+            // ServerHttpRequest request = exchange.getRequest();
+
+            HttpCookie sessionCookie = exchange.getRequest()
+                    .getCookies().getFirst("sessionId");
+
             if (sessionCookie != null && !sessionCookie.getValue().isBlank()) {
                 String sessionId = sessionCookie.getValue();
                 return Mono.just(
-                        new UsernamePasswordAuthenticationToken(sessionId, sessionId));
+                        new UsernamePasswordAuthenticationToken(
+                                sessionId,
+                                sessionId));
             }
 
             // fallback
@@ -65,10 +78,6 @@ public class SecurityConfig {
             // disable pop-up in browser
             response.getHeaders().remove("WWW-Authenticate");
             response.getHeaders().setContentType(MediaType.APPLICATION_JSON);
-
-            // Tambahkan header CORS biar browser gak bego
-            response.getHeaders().add("Access-Control-Allow-Origin", "*");
-            response.getHeaders().add("Access-Control-Allow-Credentials", "true");
 
             // response unauthorized
             String body = """
@@ -91,6 +100,7 @@ public class SecurityConfig {
                 .authorizeExchange(exchanges -> exchanges
                         .pathMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .pathMatchers("/auth/login").permitAll()
+                        .pathMatchers("/auth/logout").permitAll()
                         .pathMatchers("/api/docs/**").permitAll() // docs
                         .pathMatchers(
                                 "/swagger-ui.html",

@@ -3,9 +3,13 @@ package kk.kertaskerja.edge_service.filter;
 import kk.kertaskerja.edge_service.service.SessionService;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
+import java.util.Set;
+
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
@@ -18,39 +22,42 @@ public class SessionToBearerFilter implements GlobalFilter, Ordered {
 
     private final SessionService sessionService;
 
+    private static final Set<String> PUBLIC_PATHS = Set.of(
+            "/auth/login",
+            "/auth/logout");
+
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
-        String sessionId = exchange.getRequest().getHeaders().getFirst("X-Session-Id");
+        String path = exchange.getRequest().getPath().value();
 
-        if (sessionId == null) {
+        // PUBLIC PATH, BYPASS SESSION ID
+        if (PUBLIC_PATHS.contains(path)) {
             return chain.filter(exchange);
         }
 
-        log.info("X-Session-Id received: {}", sessionId);
+        String sessionId = exchange.getRequest().getCookies().getFirst("sessionId") != null
+                ? exchange.getRequest().getCookies().getFirst("sessionId").getValue()
+                : null;
+
+        if (sessionId == null || sessionId.isBlank()) {
+            return chain.filter(exchange);
+        }
 
         return sessionService.resolveToken(sessionId)
                 .flatMap(token -> {
-                    log.info("Resolved access token: {}", token);
-
                     if (token != null) {
                         ServerHttpRequest mutatedRequest = exchange.getRequest().mutate()
-                                .headers(httpHeaders -> httpHeaders.set("Authorization", "Bearer " + token))
+                                .headers(httpHeaders -> httpHeaders.set(HttpHeaders.AUTHORIZATION, "Bearer " + token))
                                 .build();
 
-                        ServerWebExchange mutatedExchange = exchange.mutate()
+                        return chain.filter(exchange.mutate()
                                 .request(mutatedRequest)
-                                .build();
-
-                        return chain.filter(mutatedExchange);
+                                .build());
                     }
 
                     return chain.filter(exchange);
                 })
-                .switchIfEmpty(Mono.defer(() -> {
-                    // tidak ada token di redis -> log & teruskan (atau bisa langsung unauthorized)
-                    log.warn("No token resolved for session {}, forwarding without Authorization header", sessionId);
-                    return chain.filter(exchange);
-                }));
+                .switchIfEmpty(Mono.defer(() -> chain.filter(exchange)));
     }
 
     @Override

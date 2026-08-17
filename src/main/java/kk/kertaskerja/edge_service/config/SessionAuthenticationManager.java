@@ -38,29 +38,33 @@ public class SessionAuthenticationManager implements ReactiveAuthenticationManag
 
     @Override
     public Mono<Authentication> authenticate(Authentication authentication) {
-        String sessionId = (String) authentication.getCredentials();
+        String sessionId = (String) authentication.getCredentials().toString();
+
+        if (sessionId == null || sessionId.isBlank()) {
+            return Mono.empty();
+        }
 
         return redisTemplate.opsForValue().get("session:" + sessionId)
                 .flatMap(json -> {
                     try {
-                        Map<String, Object> tokens = objectMapper.readValue(json, new TypeReference<>() {});
+                        Map<String, Object> tokens = objectMapper.readValue(json, new TypeReference<>() {
+                        });
                         String accessToken = (String) tokens.get("access_token");
 
                         if (accessToken == null) {
-                            return Mono.error(new BadCredentialsException("Access token not found in session"));
+                            return Mono.empty();
                         }
 
                         Jwt jwt = jwtDecoder.decode(accessToken);
-                        Collection<GrantedAuthority> authorities =
-                                List.of(new SimpleGrantedAuthority("ROLE_USER"));
+                        Collection<GrantedAuthority> authorities = List.of(new SimpleGrantedAuthority("ROLE_USER"));
 
                         // Cast eksplisit ke Authentication
-                        Authentication auth = new UsernamePasswordAuthenticationToken(jwt.getSubject(), null, authorities);
+                        Authentication auth = new UsernamePasswordAuthenticationToken(jwt.getSubject(), null,
+                                authorities);
                         return Mono.just(auth);
                     } catch (Exception e) {
-                        return Mono.error(new BadCredentialsException("Invalid session data", e));
+                        return Mono.empty();
                     }
-                })
-                .switchIfEmpty(Mono.defer(() -> Mono.error(new BadCredentialsException("Invalid session"))));
+                });
     }
 }
