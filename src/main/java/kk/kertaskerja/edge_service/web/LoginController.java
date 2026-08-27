@@ -162,7 +162,7 @@ public class LoginController {
                 .sameSite(isProd ? "None" : "Lax")
                 .secure(isProd)
                 .path("/")
-                .maxAge(Duration.ofHours(5))
+                .maxAge(Duration.ofHours(24))
                 .build();
 
         return ResponseEntity.ok()
