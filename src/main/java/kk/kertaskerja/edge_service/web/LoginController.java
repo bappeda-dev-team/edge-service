@@ -2,7 +2,7 @@ package kk.kertaskerja.edge_service.web;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import kk.kertaskerja.edge_service.dto.KeycloakError;
-import kk.kertaskerja.edge_service.token.TokenResponse;
+import kk.kertaskerja.edge_service.dto.TokenResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.data.redis.core.ReactiveRedisTemplate;

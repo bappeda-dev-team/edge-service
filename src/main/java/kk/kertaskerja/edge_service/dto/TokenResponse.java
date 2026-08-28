@@ -1,4 +1,4 @@
-package kk.kertaskerja.edge_service.token;
+package kk.kertaskerja.edge_service.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
