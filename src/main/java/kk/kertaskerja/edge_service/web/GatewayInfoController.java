@@ -1,6 +1,6 @@
 package kk.kertaskerja.edge_service.web;
 
-import kk.kertaskerja.edge_service.gateway_info.GatewayInfoResponse;
+import kk.kertaskerja.edge_service.dto.GatewayInfoResponse;
 import kk.kertaskerja.edge_service.service.GatewayInfoService;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.web.bind.annotation.GetMapping;

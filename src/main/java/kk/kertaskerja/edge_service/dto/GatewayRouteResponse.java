@@ -1,4 +1,4 @@
-package kk.kertaskerja.edge_service.gateway_info;
+package kk.kertaskerja.edge_service.dto;
 
 import java.util.List;
 

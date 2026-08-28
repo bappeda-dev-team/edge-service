@@ -38,13 +38,14 @@ public class SessionAuthenticationManager implements ReactiveAuthenticationManag
 
     @Override
     public Mono<Authentication> authenticate(Authentication authentication) {
-        String sessionId = (String) authentication.getCredentials().toString();
+        String sessionId = authentication.getCredentials().toString();
 
         if (sessionId == null || sessionId.isBlank()) {
             return Mono.empty();
         }
 
         return redisTemplate.opsForValue().get("session:" + sessionId)
+                .switchIfEmpty(Mono.error(new BadCredentialsException("INVALID SESSION")))
                 .flatMap(json -> {
                     try {
                         Map<String, Object> tokens = objectMapper.readValue(json, new TypeReference<>() {

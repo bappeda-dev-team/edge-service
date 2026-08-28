@@ -1,10 +1,10 @@
 package kk.kertaskerja.edge_service.service;
 
 import org.springframework.beans.factory.annotation.Value;
-import kk.kertaskerja.edge_service.gateway_info.GatewayInfoResponse;
-import kk.kertaskerja.edge_service.gateway_info.GatewayPredicateResponse;
-import kk.kertaskerja.edge_service.gateway_info.GatewayRouteResponse;
-import kk.kertaskerja.edge_service.gateway_info.GatewayServiceResponse;
+import kk.kertaskerja.edge_service.dto.GatewayInfoResponse;
+import kk.kertaskerja.edge_service.dto.GatewayPredicateResponse;
+import kk.kertaskerja.edge_service.dto.GatewayRouteResponse;
+import kk.kertaskerja.edge_service.dto.GatewayServiceResponse;
 import org.springframework.cloud.gateway.route.RouteDefinition;
 import org.springframework.cloud.gateway.route.RouteDefinitionLocator;
 import org.springframework.http.server.reactive.ServerHttpRequest;

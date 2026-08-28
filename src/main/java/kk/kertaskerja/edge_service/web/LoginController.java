@@ -1,18 +1,17 @@
 package kk.kertaskerja.edge_service.web;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import kk.kertaskerja.edge_service.dto.KeycloakError;
 import kk.kertaskerja.edge_service.token.TokenResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.data.redis.core.ReactiveRedisTemplate;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseCookie;
-import org.springframework.http.ResponseEntity;
-import org.springframework.http.HttpHeaders;
+import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
 
+import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Mono;
 
 import java.time.Duration;
@@ -61,10 +60,26 @@ public class LoginController {
                     if (response.statusCode().is2xxSuccessful()) {
                         return response.bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {
                         });
-                    } else {
-                        return response.bodyToMono(String.class)
-                                .flatMap(body -> Mono.error(new RuntimeException("Login gagal: " + body)));
                     }
+
+                    return response.bodyToMono(KeycloakError.class)
+                            .flatMap(error -> {
+                                if ("invalid_grant".equals(error.error())) {
+                                    return Mono.error(
+                                            new ResponseStatusException(
+                                                    HttpStatus.UNAUTHORIZED,
+                                                    "Username atau password salah"
+                                            )
+                                    );
+                                }
+
+                                return Mono.error(
+                                        new ResponseStatusException(
+                                                HttpStatus.BAD_GATEWAY,
+                                                "Layanan autentikasi sedang tidak tersedia"
+                                        )
+                                );
+                            });
                 })
                 .flatMap(tokens -> {
                     if (!tokens.containsKey("access_token")) {
@@ -88,7 +103,7 @@ public class LoginController {
 
     @PostMapping("/refresh")
     public Mono<TokenResponse> refresh(
-        @CookieValue(value = "sessionId", required = false) String sessionId) {
+            @CookieValue(value = "sessionId", required = false) String sessionId) {
         String tokenUrl = issuerUri + "/protocol/openid-connect/token";
 
         return redisTemplate.opsForValue()
