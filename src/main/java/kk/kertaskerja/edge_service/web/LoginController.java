@@ -90,11 +90,19 @@ public class LoginController {
                     try {
                         String jsonTokens = new ObjectMapper().writeValueAsString(tokens);
 
-                        // TODO: ACCEPT EXTERNAL CONFIGURATION FOR TOKEN DURATION
-                        // TODO: ACCEPT EXTERNAL CONFIGURATION FOR SESSION NAME
+                        Number expiresIn = (Number) tokens.get("expires_in");
+                        if (expiresIn == null || expiresIn.longValue() <= 0) {
+                            return Mono.error(
+                                    new RuntimeException("Login gagal: tidak ada expires_in")
+                            );
+                        }
+
+                        Duration sessionDuration =
+                                Duration.ofSeconds(expiresIn.longValue());
+
                         return redisTemplate.opsForValue()
-                                .set("session:" + sessionId, jsonTokens, Duration.ofHours(5))
-                                .thenReturn(buildLoginResponse(sessionId));
+                                .set("session:" + sessionId, jsonTokens, sessionDuration)
+                                .thenReturn(buildLoginResponse(sessionId, sessionDuration));
                     } catch (Exception e) {
                         return Mono.error(e);
                     }
@@ -169,7 +177,7 @@ public class LoginController {
         return deleteSession.thenReturn(buildLogoutResponse());
     }
 
-    private ResponseEntity<Map<String, Object>> buildLoginResponse(String sessionId) {
+    private ResponseEntity<Map<String, Object>> buildLoginResponse(String sessionId, Duration sessionDuration) {
         boolean isProd = "prod".equalsIgnoreCase(appEnv);
 
         ResponseCookie cookie = ResponseCookie.from("sessionId", sessionId)
@@ -177,7 +185,7 @@ public class LoginController {
                 .sameSite(isProd ? "None" : "Lax")
                 .secure(isProd)
                 .path("/")
-                .maxAge(Duration.ofHours(24))
+                .maxAge(sessionDuration)
                 .build();
 
         return ResponseEntity.ok()

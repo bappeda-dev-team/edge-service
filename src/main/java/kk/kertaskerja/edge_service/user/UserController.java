@@ -53,10 +53,7 @@ public class UserController {
         return redisTemplate.opsForValue()
                 .get(key)
                 .switchIfEmpty(
-                        Mono.error(
-                                new ResponseStatusException(
-                                        HttpStatus.UNAUTHORIZED,
-                                        "Invalid session")))
+                        Mono.error(new InvalidSessionException()))
                 .flatMap(json -> {
                     try {
                         Map<String, Object> tokens = objectMapper.readValue(
@@ -67,10 +64,7 @@ public class UserController {
                         String accessToken = (String) tokens.get("access_token");
 
                         if (accessToken == null || accessToken.isBlank()) {
-                            return Mono.error(
-                                    new ResponseStatusException(
-                                            HttpStatus.UNAUTHORIZED,
-                                            "Invalid session"));
+                            return Mono.error(new InvalidSessionException());
                         }
 
                         Jwt jwt = jwtDecoder.decode(accessToken);
@@ -89,10 +83,7 @@ public class UserController {
                         return Mono.just(user);
 
                     } catch (Exception e) {
-                        return Mono.error(
-                                new ResponseStatusException(
-                                        HttpStatus.UNAUTHORIZED,
-                                        "Invalid session"));
+                        return Mono.error(new InvalidSessionException());
                     }
                 });
     }
