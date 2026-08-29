@@ -1,10 +1,11 @@
 package kk.kertaskerja.edge_service.config;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import kk.kertaskerja.edge_service.user.InvalidSessionException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
-import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.ReactiveAuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -41,31 +42,55 @@ public class SessionAuthenticationManager implements ReactiveAuthenticationManag
         String sessionId = authentication.getCredentials().toString();
 
         if (sessionId == null || sessionId.isBlank()) {
-            return Mono.empty();
+            return Mono.error(new InvalidSessionException());
         }
 
-        return redisTemplate.opsForValue().get("session:" + sessionId)
-                .switchIfEmpty(Mono.error(new BadCredentialsException("INVALID SESSION")))
-                .flatMap(json -> {
-                    try {
-                        Map<String, Object> tokens = objectMapper.readValue(json, new TypeReference<>() {
-                        });
-                        String accessToken = (String) tokens.get("access_token");
+        return redisTemplate.opsForValue()
+                .get("session:" + sessionId)
+                .switchIfEmpty(
+                        Mono.error(new InvalidSessionException())
+                )
+                .flatMap(this::authenticateSession);
+    }
 
-                        if (accessToken == null) {
-                            return Mono.empty();
-                        }
+    private Mono<Authentication> authenticateSession(String json) {
+        try {
+            Map<String, Object> tokens =
+                    objectMapper.readValue(
+                            json,
+                            new TypeReference<>() {}
+                    );
 
-                        Jwt jwt = jwtDecoder.decode(accessToken);
-                        Collection<GrantedAuthority> authorities = List.of(new SimpleGrantedAuthority("ROLE_USER"));
+            String accessToken = (String) tokens.get("access_token");
 
-                        // Cast eksplisit ke Authentication
-                        Authentication auth = new UsernamePasswordAuthenticationToken(jwt.getSubject(), null,
-                                authorities);
-                        return Mono.just(auth);
-                    } catch (Exception e) {
-                        return Mono.empty();
-                    }
-                });
+            if (accessToken == null || accessToken.isBlank()) {
+                return Mono.error(new InvalidSessionException());
+            }
+
+            Jwt jwt;
+
+            try {
+                jwt = jwtDecoder.decode(accessToken);
+            } catch (Exception e) {
+                return Mono.error(new InvalidSessionException());
+            }
+
+            Collection<GrantedAuthority> authorities =
+                    List.of(
+                            new SimpleGrantedAuthority("ROLE_USER")
+                    );
+
+            Authentication auth =
+                    new UsernamePasswordAuthenticationToken(
+                            jwt.getSubject(),
+                            null,
+                            authorities
+                    );
+
+            return Mono.just(auth);
+
+        } catch (JsonProcessingException e) {
+            return Mono.error(new InvalidSessionException());
+        }
     }
 }
