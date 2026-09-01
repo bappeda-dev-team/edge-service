@@ -72,7 +72,6 @@ public class SecurityConfig {
 
                             // disable pop-up in browser
                             response.getHeaders().remove("WWW-Authenticate");
-                            response.getHeaders().setContentType(MediaType.APPLICATION_JSON);
 
                             return Mono.error(exception);
         });
@@ -100,7 +99,8 @@ public class SecurityConfig {
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint((exchange, exception) -> {
                             ServerHttpResponse response = exchange.getResponse();
-                            response.setStatusCode(HttpStatus.UNAUTHORIZED);
+
+                            // disable pop-up in browser
                             response.getHeaders().remove("WWW-Authenticate");
 
                             response.getHeaders().setContentType(MediaType.APPLICATION_JSON);
