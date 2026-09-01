@@ -7,10 +7,13 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.http.HttpCookie;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.security.config.web.server.SecurityWebFiltersOrder;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
+import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.security.web.server.SecurityWebFilterChain;
 import org.springframework.security.web.server.authentication.AuthenticationWebFilter;
 import org.springframework.web.cors.CorsConfiguration;
@@ -63,9 +66,16 @@ public class SecurityConfig {
 
         // Pastikan failure handler tetap return 401 + header CORS
         authWebFilter.setAuthenticationFailureHandler(
-                    (webFilterExchange, exception) ->
-                            Mono.error(exception)
-        );
+            (webFilterExchange, exception) -> {
+                            ServerHttpResponse response = webFilterExchange.getExchange().getResponse();
+                            response.setStatusCode(HttpStatus.UNAUTHORIZED);
+
+                            // disable pop-up in browser
+                            response.getHeaders().remove("WWW-Authenticate");
+                            response.getHeaders().setContentType(MediaType.APPLICATION_JSON);
+
+                            return Mono.error(exception);
+        });
 
         return http
                 .cors(Customizer.withDefaults()) // pastikan cors jalan lebih dulu
@@ -87,6 +97,16 @@ public class SecurityConfig {
                         .anyExchange()
                         .authenticated()
                 )
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint((exchange, exception) -> {
+                            ServerHttpResponse response = exchange.getResponse();
+                            response.setStatusCode(HttpStatus.UNAUTHORIZED);
+                            response.getHeaders().remove("WWW-Authenticate");
+
+                            response.getHeaders().setContentType(MediaType.APPLICATION_JSON);
+
+                            return Mono.error(exception);
+                        }))
                 .formLogin(ServerHttpSecurity.FormLoginSpec::disable)
                 .httpBasic(ServerHttpSecurity.HttpBasicSpec::disable)
                 .addFilterAt(
