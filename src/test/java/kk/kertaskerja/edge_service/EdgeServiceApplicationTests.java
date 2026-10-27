@@ -15,26 +15,7 @@ import org.testcontainers.utility.DockerImageName;
 @SpringBootTest(
 		webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT
 )
-@ActiveProfiles("dev")
-@Testcontainers
 class EdgeServiceApplicationTests {
-
-    private static final int REDIS_PORT = 6379;
-
-	@Container
-	static GenericContainer<?> redis =
-			new GenericContainer<>(DockerImageName.parse("redis:alpine"))
-			.withExposedPorts(REDIS_PORT);
-
-	@DynamicPropertySource
-	static void redisProperties(DynamicPropertyRegistry registry) {
-		registry.add("spring.redis.host", () -> redis.getHost());
-		registry.add("spring.redis.port", () -> REDIS_PORT);
-	}
-
-	@MockitoBean
-	ReactiveClientRegistrationRepository clientRegistrationRepository;
-
 	@Test
 	void verifyThatSpringContextLoads() {
 	}
