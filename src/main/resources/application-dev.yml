@@ -67,20 +67,38 @@ spring:
         - name: CircuitBreaker
           args:
             fallbackUri: forward:/kertaskerja-fallback
+      routes:
+        - id: kepegawaian-service-docs
+          uri: ${KEPEGAWAIAN_SERVICE_URL}
+          predicates:
+            - Path=/api/docs/kepegawaian/v3/api-docs
+          filters:
+            - SetPath=/v3/api-docs
+
+        - id: kepegawaian-service
+          uri: ${KEPEGAWAIAN_SERVICE_URL}
+          predicates:
+            - Path=/api/v1/kepegawaian/**
+          filters:
+            - StripPrefix=3
+            - name: CircuitBreaker
+              args:
+                name: kepegawaianCircuitBreaker
+                fallbackUri: forward:/kepegawaian-fallback
   security:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: http://auth.kertaskerja.test/realms/KabMadiun
+          issuer-uri: ${KEYCLOAK_ISSUER_URI}
       client:
         provider:
           keycloak:
-            issuer-uri: http://auth.kertaskerja.test/realms/KabMadiun
+            issuer-uri: ${KEYCLOAK_ISSUER_URI}
 
         registration:
           keycloak:
-            client-id: edge-service
-            client-secret: kertaskerja-secret
+            client-id: ${KEYCLOAK_CLIENT_ID}
+            client-secret: ${KEYCLOAK_CLIENT_SECRET}
             scope: openid, roles
             redirect-uri: "{baseUrl}/login/oauth2/code/keycloak"
 
@@ -134,7 +152,6 @@ kertaskerja:
   cors:
     allowed-origins:
       - "http://localhost:3000"
-      - "http://dev.kertaskerja.local:3000"
     allowed-headers:
       - "*"
     allowed-methods:
@@ -146,4 +163,15 @@ kertaskerja:
       - "OPTIONS"
 
 app:
-  env: "local"
+  env: "dev"
+
+scalar:
+  enabled: true
+  path: /api/docs
+  pageTitle: Kertaskerja API Documentation
+  sources:
+    - title: Kepegawaian Service
+      slug: kepegawaian
+      url: /api/docs/kepegawaian/v3/api-docs
+      isDefault: true
+
