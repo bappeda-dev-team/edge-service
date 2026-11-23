@@ -11,18 +11,7 @@ public class SessionAuthenticationConverter implements ServerAuthenticationConve
     @Override
     public Mono<Authentication> convert(ServerWebExchange exchange) {
         // try from header
-        String sessionId = exchange.getRequest().getHeaders().getFirst("X-Session-Id");
-
-        // Fallback ke cookie kalau header tidak ada
-        if (sessionId == null || sessionId.isBlank()) {
-            HttpCookie cookie = exchange.getRequest()
-                    .getCookies()
-                    .getFirst("sessionId");
-
-            if (cookie != null) {
-                sessionId = cookie.getValue();
-            }
-        }
+        String sessionId = resolveSessionId(exchange);
 
         // Kalau tetap tidak ada → tidak authenticate
         if (sessionId == null || sessionId.isBlank()) {
@@ -31,4 +20,27 @@ public class SessionAuthenticationConverter implements ServerAuthenticationConve
         // username = sessionId, credentials = sessionId
         return Mono.just(new UsernamePasswordAuthenticationToken(sessionId, sessionId));
     }
+
+    private String resolveSessionId(ServerWebExchange exchange) {
+        // 1. Prioritaskan cookie
+        HttpCookie cookie = exchange.getRequest()
+                .getCookies()
+                .getFirst("sessionId");
+
+        if (cookie != null && !cookie.getValue().isBlank()) {
+            return cookie.getValue();
+        }
+
+        // 2. Fallback ke header
+        String header = exchange.getRequest()
+                .getHeaders()
+                .getFirst("X-Session-Id");
+
+        if (header != null && !header.isBlank()) {
+            return header;
+        }
+
+        return null;
+    }
+
 }
